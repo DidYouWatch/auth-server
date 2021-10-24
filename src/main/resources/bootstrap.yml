@@ -9,10 +9,10 @@ spring:
       multiplier: 1.3
       max-interval: 10000
       max-attempts: 20
-    uri: http://${app.config-server}:8888
+    uri: http://${app.config-server}
     name: auth-server
 
-app.config-server: localhost
+app.config-server: "localhost:8888"
 
 ---
 
@@ -21,4 +21,4 @@ spring:
     activate:
       on-profile: prod
 
-app.config-server: config-server
+app.config-server: ${CONFIG_SERVER_URI}
