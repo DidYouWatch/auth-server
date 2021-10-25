@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-server
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth-server
+      version: 'v1'
+  template:
+    metadata:
+      labels:
+        app: auth-server
+        version: 'v1'
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - auth-server
+                topologyKey: kubernetes.io/hostname
+              weight: 100
+      containers:
+        - name: auth-server
+          image: gcr.io/didyouwatch-329208/auth-server
+          env:
+            - name: CONFIG_SERVER_URI
+              value: "config-server-service:80"
+            - name: SPRING_PROFILES_ACTIVE
+              value: prod, native
+          envFrom:
+            - secretRef:
+                name: auth-server-dbconfig
+          args: ["-Xmx256m", "-Xms256m", "-DSpring.profiles.active=${SPRING_PROFILES_ACTIVE}"]
+
+          resources:
+            requests:
+              memory: '512Mi'
+              cpu: '250m'
+            limits:
+              memory: '512Mi'
+              cpu: '250m'
+          ports:
+            - name: http
+              containerPort: 9999
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 15
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 120
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+  namespace: default
+  labels:
+    app: auth-service
+spec:
+  type: ClusterIP
+  selector:
+    app: auth-server
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 9999

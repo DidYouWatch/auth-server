@@ -1,0 +1,50 @@
+
+steps:
+  - id: configure docker
+    name: gcr.io/cloud-builders/gcloud
+    args:
+      - auth
+      - configure-docker
+
+  - id: build app with jib
+    name: 'gradle:7'
+    env:
+      - PROJECT_ID=$PROJECT_ID
+      # image 이름 설정
+      - IMAGE_NAME=auth-server
+    entrypoint: bash
+    args:
+      - '-c'
+      - >-
+        curl -SL
+        "https://github.com/GoogleCloudPlatform/docker-credential-gcr/releases/download/v2.1.0/docker-credential-gcr_linux_amd64-2.1.0.tar.gz"
+        --output docker-credential-gcr.tar.gz  && tar -xz -f
+        ./docker-credential-gcr.tar.gz docker-credential-gcr && mv
+        ./docker-credential-gcr /usr/local/bin/docker-credential-gcr && chmod +x
+        /usr/local/bin/docker-credential-gcr && gradle jib -x test
+
+  - id: deploy to gke
+    name: gcr.io/cloud-builders/gke-deploy
+    env:
+      - 'CLOUDSDK_COMPUTE_ZONE=${_CLOUDSDK_COMPUTE_ZONE}'
+      - 'CLOUDSDK_CONTAINER_CLUSTER=${_CLOUDSDK_CONTAINER_CLUSTER}'
+      - GCLOUD_PROJECT=$PROJECT_ID
+      - KUBECONFIG=/kube/config
+    entrypoint: bash
+    args:
+      - '-c'
+      - |
+        CLUSTER=${_CLOUDSDK_CONTAINER_CLUSTER}
+        ZONE=${_CLOUDSDK_COMPUTE_ZONE}
+        PROJECT=$$(gcloud config get-value core/project)
+        gcloud container clusters get-credentials "$${CLUSTER}" \
+        --project $${PROJECT} --zone "$${ZONE}" \
+        && kubectl apply -f kubernetes/auth-server.yml
+# 적용할 kubernetes 정의 파일 명시하기
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+substitutions:
+  _CLOUDSDK_COMPUTE_ZONE: asia-northeast1-a
+  _CLOUDSDK_CONTAINER_CLUSTER: did-you-watch-cluster
+# cluster 이름 명시
