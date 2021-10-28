@@ -1,6 +1,14 @@
+spring:
+  cloud:
+    config:
+      enabled: false
+
+
+---
 
 spring:
   application.name: auth-server
+  config.activate.on-profile: local
   cloud.config:
     enabled: true
     fail-fast: true
