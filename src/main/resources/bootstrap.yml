@@ -3,6 +3,11 @@ spring:
     config:
       enabled: false
 
+logging:
+  level:
+    root: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level ${PID:- } --- [%15.15t] %-40.40logger{39} : [%marker] %m%n-%wEx"
 
 ---
 
